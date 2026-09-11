@@ -47,6 +47,9 @@
       "esbuild",
       "sharp",
       "workerd"
-    ]
+    ],
+    "overrides": {
+      "vite": "7.3.6"
+    }
   }
 }
