@@ -26,9 +26,15 @@ export type CacheHintLike = {
 /**
  * Merge content cache hints (collection + entry tags from EmDash) onto the
  * current response. No-op when caching is disabled (dev / no provider).
+ *
+ * `Astro.cache` is `undefined` under `astro dev` (the Workers cache provider is
+ * only wired up at the edge), so `cache` may be nullish here.
  */
-export function applyCacheHints(cache: RouteCache, ...hints: CacheHintLike[]): void {
-  if (!cache.enabled) return
+export function applyCacheHints(
+  cache: RouteCache | null | undefined,
+  ...hints: CacheHintLike[]
+): void {
+  if (!cache || !cache.enabled) return
   for (const hint of hints) {
     if (!hint) continue
     if (!hint.tags?.length && !hint.lastModified) continue
@@ -44,11 +50,11 @@ export function applyCacheHints(cache: RouteCache, ...hints: CacheHintLike[]): v
  * page. EmDash invalidates `[collection, id]` on writes.
  */
 export function tagContentEntry(
-  cache: RouteCache,
+  cache: RouteCache | null | undefined,
   collection: string,
   id: string | null | undefined,
   extraTags: string[] = [],
 ): void {
-  if (!cache.enabled || !id) return
+  if (!cache || !cache.enabled || !id) return
   cache.set({ tags: [collection, id, ...extraTags] })
 }
