@@ -9,3 +9,4 @@ data.db-*
 uploads/
 .wrangler/
 emdash-env.d.ts
+.emdash/migrations.json
