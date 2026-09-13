@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'astro/config'
 import cloudflare from '@astrojs/cloudflare'
 import react from '@astrojs/react'
@@ -8,9 +9,13 @@ import { d1, r2 } from '@emdash-cms/cloudflare'
 import { bentoEmail } from './src/plugins/bento-email.ts'
 import { workersCache } from './src/cache/workers-cache.ts'
 
-// Use D1/R2 in production builds; local SQLite + filesystem for `astro dev`.
-const useCloudflareBindings =
-  process.env.EMDASH_CLOUDFLARE === '1' || process.argv.includes('build')
+// Every Astro command here runs under @astrojs/cloudflare, which executes dev,
+// build, prerender, and `astro check` inside workerd — not Node. The native
+// `better-sqlite3` SQLite adapter cannot load in workerd (it references the
+// CommonJS `module` global and a native addon), so always use the Cloudflare
+// D1/R2 bindings. During `astro dev`/`astro check` these are served locally by
+// miniflare from wrangler.jsonc; production builds use the real bindings.
+const useCloudflareBindings = true
 
 // Aggressive edge HTML caching. EmDash invalidates Cache-Tags on content
 // publish/update/delete, which our workersCache provider maps to cache.purge().
@@ -29,6 +34,16 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    resolve: {
+      alias: {
+        // Astro 6 + @astrojs/cloudflare run dev SSR/prerender inside workerd,
+        // which has no CommonJS `module` global. The transitive `debug`
+        // package references `module.exports` at load time and crashes the
+        // dev runner ("module is not defined"). Alias it to a pure-ESM shim
+        // backed by `obug`. Mirrors withastro/astro#16569.
+        debug: fileURLToPath(new URL('./src/shims/debug.js', import.meta.url)),
+      },
+    },
   },
   integrations: [
     react(),

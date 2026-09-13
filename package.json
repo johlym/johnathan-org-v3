@@ -28,6 +28,7 @@
     "astro": "^6.4.8",
     "better-sqlite3": "^13.0.2",
     "emdash": "^0.31.1",
+    "obug": "^3.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "wrangler": "^4.116.0"
@@ -46,6 +47,9 @@
       "esbuild",
       "sharp",
       "workerd"
-    ]
+    ],
+    "overrides": {
+      "vite": "7.3.6"
+    }
   }
 }
