@@ -30,7 +30,7 @@ Infrastructure already provisioned (2026-07-30):
 | Secret | `EMDASH_ENCRYPTION_KEY` set |
 | KV | `SESSION` auto-provisioned by Astro adapter |
 
-Bindings live in [`astro-frontend/wrangler.jsonc`](astro-frontend/wrangler.jsonc):
+Bindings live in [`wrangler.jsonc`](wrangler.jsonc) at the repo root:
 `DB` → D1, `MEDIA` → R2, cron `* * * * *`, `worker_loaders` for plugins.
 
 Optional: enable public access on the R2 bucket (or attach `media.johnathan.org`)
@@ -41,7 +41,7 @@ Enable Cloudflare Image Resizing on the `johnathan.org` zone if not already on.
 ## 2. Secrets
 
 ```bash
-cd astro-frontend
+# From the repo root (this is the Astro app; there is no astro-frontend/ subdir)
 
 # EmDash plugin secret encryption (already set on the Worker)
 # npx emdash secrets generate | pnpm exec wrangler secret put EMDASH_ENCRYPTION_KEY
@@ -69,7 +69,6 @@ is empty.
 Redeploy after code changes:
 
 ```bash
-cd astro-frontend
 pnpm run deploy
 ```
 
@@ -110,15 +109,16 @@ is in git history if you need to re-run from a checkout of that path).
 
 ## 7. Local development
 
+Every Astro command (`dev`, `build`, `check`) runs under `@astrojs/cloudflare` / **workerd**, not Node (`astro.config.mjs` sets `useCloudflareBindings = true`). The native `better-sqlite3` adapter cannot load in workerd, so local D1 and R2 come from **miniflare** via `wrangler.jsonc`. Do not expect `./data.db` or `./uploads`.
+
 ```bash
-cd astro-frontend
 pnpm install
 pnpm dev
 # → http://localhost:4321
 # → http://localhost:4321/_emdash/admin
 ```
 
-Local uses SQLite (`./data.db`) and `./uploads`. Both are gitignored.
+First boot runs the EmDash setup wizard. Seed from `.emdash/seed.json` applies when the D1 database is empty. Edge HTML cache (`Astro.cache` / Workers Caching) is **production-only** — `Astro.cache` is undefined under `astro dev` (`src/lib/route-cache.ts`). EmDash admin needs the Vite **7.3.6** pin in `package.json` (`pnpm.overrides`); a newer Vite breaks React refresh in the admin.
 
 ## Notes
 
@@ -126,7 +126,8 @@ Local uses SQLite (`./data.db`) and `./uploads`. Both are gitignored.
   `wrangler.jsonc`) with Astro route rules + `workersCache` provider
   (`src/cache/`). Anonymous HTML is cached at the edge (`Cf-Cache-Status: HIT`
   means the Worker did not run). Browser TTL stays short (60s); edge TTL is
-  1 hour with stale-while-revalidate up to 1 day.
+  1 hour with stale-while-revalidate up to 1 day. Local `pnpm dev` does not
+  exercise this path.
 - **Automatic purge on EmDash writes:** publish / update / unpublish / delete
   already call Astro `cache.invalidate({ tags: [collection, id] })`. The
   provider maps that to Workers `cache.purge({ tags })`, so the post/page,
