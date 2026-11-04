@@ -22,6 +22,29 @@ const useCloudflareBindings = true
 const PAGE_MAX_AGE = 3600 // 1 hour fresh at the edge
 const PAGE_SWR = 86400 // serve stale up to 1 day while revalidating
 
+// EmDash 1.4's server bundle resolves far more files than 0.37. Rollup's
+// default of 1000 parallel file ops fills the Workers Builds descriptor
+// limit, and the Tailwind ESM loader then fails reading package.json with
+// "too many open files". Astro copies each environment's rollupOptions over
+// the shared build config, so this has to be applied in configResolved.
+const MAX_PARALLEL_FILE_OPS = 64
+
+function limitParallelFileOps() {
+  return {
+    name: 'limit-parallel-file-ops',
+    enforce: 'pre',
+    configResolved(config) {
+      config.build.rollupOptions ??= {}
+      config.build.rollupOptions.maxParallelFileOps = MAX_PARALLEL_FILE_OPS
+      for (const environment of Object.values(config.environments ?? {})) {
+        if (!environment.build) continue
+        environment.build.rollupOptions ??= {}
+        environment.build.rollupOptions.maxParallelFileOps = MAX_PARALLEL_FILE_OPS
+      }
+    },
+  }
+}
+
 export default defineConfig({
   site: 'https://johnathan.org',
   output: 'server',
@@ -33,7 +56,7 @@ export default defineConfig({
     format: 'directory',
   },
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [limitParallelFileOps(), tailwindcss()],
     resolve: {
       alias: {
         // Astro 6 + @astrojs/cloudflare run dev SSR/prerender inside workerd,

@@ -7,9 +7,9 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "ulimit -Sn 65536 2>/dev/null || true; astro build",
     "preview": "astro preview",
-    "deploy": "astro build && wrangler deploy",
+    "deploy": "pnpm build && wrangler deploy",
     "check": "astro check",
     "emdash:migrate:status": "emdash migrate --status --wrangler-config wrangler.jsonc",
     "emdash:migrate": "emdash migrate --wrangler-config wrangler.jsonc",
