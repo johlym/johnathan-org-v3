@@ -87,6 +87,32 @@ function toHtmlBody(message: EmailDeliverEvent['message']): string {
   return `<pre style="font-family:inherit;white-space:pre-wrap">${escaped}</pre>`
 }
 
+/**
+ * Bento's transactional API has no Cc header. SMTP delivery queues one email
+ * per recipient, so Cc addresses are sent the same way. `reply_to` is the
+ * field Bento's SMTP bridge writes for a Reply-To header.
+ */
+function bentoEmails(message: EmailDeliverEvent['message'], from: string) {
+  const seen = new Set<string>()
+  const recipients: string[] = []
+  for (const address of [message.to, ...(message.cc ?? [])]) {
+    const trimmed = address.trim()
+    const key = trimmed.toLowerCase()
+    if (!trimmed || seen.has(key)) continue
+    seen.add(key)
+    recipients.push(trimmed)
+  }
+
+  return recipients.map((to) => ({
+    to,
+    from,
+    subject: message.subject,
+    html_body: toHtmlBody(message),
+    transactional: true as const,
+    ...(message.replyTo ? { reply_to: message.replyTo } : {}),
+  }))
+}
+
 export function createBentoEmailDeliver(
   config: BentoEmailConfig,
 ): (event: EmailDeliverEvent, ctx: PluginContext) => Promise<void> {
@@ -102,22 +128,18 @@ export function createBentoEmailDeliver(
       siteUuid: credentials.siteUuid,
     })
 
+    const emails = bentoEmails(message, config.from)
     const queued = await bento.V1.Batch.sendTransactionalEmails({
-      emails: [
-        {
-          to: message.to,
-          from: config.from,
-          subject: message.subject,
-          html_body: toHtmlBody(message),
-          transactional: true,
-        },
-      ],
+      emails,
     })
 
     ctx.log.info('email delivered via Bento', {
       to: message.to,
+      cc: message.cc,
+      replyTo: message.replyTo,
       subject: message.subject,
       from: config.from,
+      recipients: emails.length,
       queued,
     })
   }
