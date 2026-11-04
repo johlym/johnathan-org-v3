@@ -1,15 +1,46 @@
 ---
 /**
- * Renders EmDash htmlBlock nodes. Needed for legacy MD/HTML embeds
- * (Highcharts scripts, etc.) after Markdown import.
+ * Renders EmDash htmlBlock nodes.
+ *
+ * Legacy imported posts (Highcharts and other script embeds) rely on raw HTML,
+ * so non-isolated blocks stay unsanitized. Isolated blocks, added in EmDash
+ * 1.1, carry their own CSS and JavaScript and must render in EmDash's
+ * sandboxed frame.
  */
-interface Props {
-  node?: { html?: string }
-  value?: { html?: string }
+import { HtmlBlock as IsolatedHtmlBlock } from 'emdash/ui'
+
+interface HtmlNode {
+  _type?: 'htmlBlock'
+  _key?: string
+  html?: string
+  css?: string
+  js?: string
+  isolated?: boolean
 }
 
-const props = Astro.props
-const html = props.node?.html ?? props.value?.html ?? ''
+interface Props {
+  node?: HtmlNode
+  value?: HtmlNode
+}
+
+const block = Astro.props.node ?? Astro.props.value
+const html = block?.html ?? ''
+const isolated = block?.isolated === true
 ---
 
-{html && <div class="html-block" set:html={html} />}
+{
+  isolated && block ? (
+    <IsolatedHtmlBlock
+      node={{
+        _type: 'htmlBlock',
+        _key: block._key ?? 'html-block',
+        html,
+        css: block.css,
+        js: block.js,
+        isolated: true,
+      }}
+    />
+  ) : (
+    html && <div class="html-block" set:html={html} />
+  )
+}

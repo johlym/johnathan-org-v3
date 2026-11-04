@@ -66,7 +66,45 @@ Worker is deployed. Custom domain already hits the EmDash Worker
 user). Seed from `.emdash/seed.json` applies on first boot when the DB
 is empty.
 
-Redeploy after code changes:
+## EmDash 1.4 upgrade
+
+This app moved from EmDash `0.37.0` to `1.4.0`. That jump adds core
+migrations `075` through `091`, including `079_datetime_normalization`,
+which rewrites every datetime value on content rows and revisions.
+
+Deploying the new Worker before those migrations are applied makes the
+site answer `503` until they finish. A Worker will not run
+`079_datetime_normalization` itself when the database is large. Apply
+the migrations from the CLI first, against a backup of D1
+`johnathan-org-emdash`.
+
+```bash
+# Export D1 (dashboard Time Travel or `wrangler d1 export`) and copy the R2 bucket.
+# Keep the current EMDASH_ENCRYPTION_KEY. A JSON content export is not a backup.
+
+pnpm build
+export CLOUDFLARE_API_TOKEN=...   # token with D1 Edit
+export CLOUDFLARE_ACCOUNT_ID=...  # account that owns the D1 database
+
+pnpm emdash:migrate:status
+# Confirm the printed account and database UUID
+# 8656333c-aafb-4a71-9be2-c45fd43b92d9, then:
+pnpm emdash:migrate
+pnpm exec wrangler deploy   # same build; do not rebuild in between
+pnpm emdash:migrate:check
+```
+
+`emdash migrate` talks to remote D1 only. Local `pnpm dev` applies the
+same migrations to the Miniflare database on startup.
+
+There are no reference fields in this content model, so the 1.4
+reference-to-relation conversion has nothing to bind. Cache hints no
+longer include an automatic `Last-Modified`; this site's Workers cache
+provider already sets `Cache-Control` from the route rules and only
+emits `Last-Modified` when a hint actually has one.
+
+Redeploy after later code changes, once migrations for that build are
+already applied:
 
 ```bash
 pnpm run deploy
