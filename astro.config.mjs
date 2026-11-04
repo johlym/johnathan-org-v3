@@ -5,7 +5,7 @@ import react from '@astrojs/react'
 import tailwindcss from '@tailwindcss/vite'
 import emdash, { local } from 'emdash/astro'
 import { sqlite } from 'emdash/db'
-import { d1, r2 } from '@emdash-cms/cloudflare'
+import { d1, r2, sandbox } from '@emdash-cms/cloudflare'
 import { bentoEmail } from './src/plugins/bento-email.ts'
 import { workersCache } from './src/cache/workers-cache.ts'
 
@@ -86,6 +86,9 @@ export default defineConfig({
             directory: './uploads',
             baseUrl: '/_emdash/api/media/file',
           }),
+      // Hosted plugin registry (registry.emdashcms.com). sandbox() selects the
+      // Worker Loader runner only when wrangler.jsonc binds LOADER.
+      sandboxRunner: sandbox(),
       plugins: [
         // `from` must be a Bento Author (Emails → Authors). No no-reply addresses.
         bentoEmail({ from: 'johnathan@johnathan.org' }),

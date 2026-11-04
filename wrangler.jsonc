@@ -36,6 +36,8 @@
       "bucket_name": "johnathan-org-media"
     }
   ],
+  // Worker Loader sandbox for registry installs. The binding name must stay
+  // LOADER; this requires the Workers Paid plan.
   "worker_loaders": [
     {
       "binding": "LOADER"
